@@ -30,10 +30,14 @@
 #include <rpg_inventory_core>
 #include <smlib>
 #include <tConomy>
+#include <rpg_perks>
+#include <tStocks>
 
 #pragma newdecls required
 
 #define MAX_GARBAGE 1024
+
+int g_iSpeedTimeLeft[MAXPLAYERS + 1];
 
 enum garbage {
 	Float:gXPos, 
@@ -153,6 +157,15 @@ public void spawnGarbage(int id) {
 }
 
 public Action refreshTimer(Handle Timer) {
+	for (int i = 1; i < MAXPLAYERS; i++) {
+		if (g_iSpeedTimeLeft[i] > 0)
+			g_iSpeedTimeLeft[i]--;
+		else if (g_iSpeedTimeLeft[i] == 0) {
+			g_iSpeedTimeLeft[i] = -1;
+			removeSpeed(i);
+		}
+	}
+	
 	if (randomNumbers == INVALID_HANDLE)
 		return;
 	int active = getActiveGarbage();
@@ -216,7 +229,68 @@ public void pickupGarbage(int client, int ent, int garbageId) {
 	PushArrayCell(randomNumbers, garbageId);
 	g_eGarbageSpawnPoints[garbageId][gIsActive] = false;
 	inventory_givePlayerItem(client, "Garbage", 10, "", "Junk", "Garbage Collector", 1, "Collected");
+	
+	int extraChance = perks_hasPerk(client, "Double Garbage 4") ? 80 : 
+	perks_hasPerk(client, "Double Garbage 3") ? 60 : 
+	perks_hasPerk(client, "Double Garbage 2") ? 40 : 
+	perks_hasPerk(client, "Double Garbage 2") ? 20 : 0;
+	
+	if (GetRandomInt(0, 100) < extraChance)
+		inventory_givePlayerItem(client, "Garbage", 10, "", "Junk", "Garbage Collector", 1, "Collected (Double Perk)");
+	
+	int rareChance = perks_hasPerk(client, "Rare Loot 1") ? 1 : 
+	perks_hasPerk(client, "Rare Loot 2") ? 2 : 
+	perks_hasPerk(client, "Rare Loot 3") ? 3 : 
+	perks_hasPerk(client, "Rare Loot 4") ? 5 : 0;
+	
+	if (GetRandomInt(0, 100) < rareChance) {
+		int which = GetRandomInt(0, 4);
+		if (which == 0)
+			inventory_givePlayerItem(client, "Lockpick", 0, "", "Criminal", "Criminal", 1, "Collected (Rare Perk)");
+		else if (which == 1)
+			inventory_givePlayerItem(client, "weapon_flashbang", 0, "", "Weapon", "Weapon", 1, "Collected (Rare Perk)");
+		else if (which == 2)
+			inventory_givePlayerItem(client, "weapon_hegrenade", 0, "", "Weapon", "Weapon", 1, "Collected (Rare Perk)");
+		else if (which == 3)
+			inventory_givePlayerItem(client, "weapon_smokegrenade", 0, "", "Weapon", "Weapon", 1, "Collected (Rare Perk)");
+		else if (which == 4)
+			inventory_givePlayerItem(client, "weapon_molotov", 0, "", "Weapon", "Weapon", 1, "Collected (Rare Perk)");
+	}
+	
+	if (perks_hasPerk(client, "Weapon Drop Chance")) {
+		if (GetRandomInt(0, 100) == 1) {
+			int which = GetRandomInt(0, 3);
+			if (which == 0)
+				inventory_givePlayerItem(client, "weapon_p2000", 5, "", "Weapon", "Weapon", 1, "Collected (Weapon Perk)");
+			else if (which == 1)
+				inventory_givePlayerItem(client, "weapon_usp", 5, "", "Weapon", "Weapon", 1, "Collected (Weapon Perk)");
+			else if (which == 2)
+				inventory_givePlayerItem(client, "weapon_glock", 5, "", "Weapon", "Weapon", 1, "Collected (Weapon Perk)");
+			else if (which == 3)
+				inventory_givePlayerItem(client, "weapon_deagle", 5, "", "Weapon", "Weapon", 1, "Collected (Weapon Perk)");
+		}
+	}
+	
+	if (perks_hasPerk(client, "Pickup Speed Boost 1")) {
+		SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 1.1);
+		g_iSpeedTimeLeft[client] = 3;
+	} else if (perks_hasPerk(client, "Pickup Speed Boost 2")) {
+		SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 1.15);
+		g_iSpeedTimeLeft[client] = 5;
+	}
+	
+	
 	g_iActiveGarbage--;
+}
+
+
+
+public void removeSpeed(int client) {
+	if (!isValidClient(client))
+		return;
+	if (GetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue") <= 1.0)
+		return;
+	SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 1.0);
 }
 
 
@@ -410,13 +484,31 @@ public int JobPanelHandler(Handle menu, MenuAction action, int client, int item)
 			if (inventory_hasPlayerItem(client, "Garbage")) {
 				tConomy_addCurrency(client, 75, "Recycled Garbage");
 				inventory_removePlayerItems(client, "Garbage", 1, "Recycled");
-				jobs_addExperience(client, 40, "Garbage Collector");
+				
+				int xpAmount = 40;
+				if (perks_hasPerk(client, "More XP 3"))
+					xpAmount = RoundToCeil(float(xpAmount) * 1.15);
+				else if (perks_hasPerk(client, "More XP 2"))
+					xpAmount = RoundToCeil(float(xpAmount) * 1.1);
+				else if (perks_hasPerk(client, "More XP 1"))
+					xpAmount = RoundToCeil(float(xpAmount) * 1.05);
+				
+				jobs_addExperience(client, xpAmount, "Garbage Collector");
 			}
 		} else if (StrEqual(cValue, "recycleAll")) {
 			int itemamount = inventory_getPlayerItemAmount(client, "Garbage");
 			if (inventory_removePlayerItems(client, "Garbage", itemamount, "Recycled Garbage (Mass)")) {
 				tConomy_addCurrency(client, 75 * itemamount, "Recycled Garbage");
-				jobs_addExperience(client, 40 * itemamount, "Garbage Collector");
+				
+				int xpAmount = 40;
+				if (perks_hasPerk(client, "More XP 3"))
+					xpAmount = RoundToCeil(float(xpAmount) * 1.15);
+				else if (perks_hasPerk(client, "More XP 2"))
+					xpAmount = RoundToCeil(float(xpAmount) * 1.1);
+				else if (perks_hasPerk(client, "More XP 1"))
+					xpAmount = RoundToCeil(float(xpAmount) * 1.05);
+				
+				jobs_addExperience(client, xpAmount * itemamount, "Garbage Collector");
 			}
 		} else if (StrEqual(cValue, "skin") && tConomy_getCurrency(client) >= 15000 && jobs_getLevel(client) >= 20 && jobs_isActiveJob(client, "Garbage Collector")) {
 			tConomy_removeCurrency(client, 15000, "Bought Skin");
@@ -433,6 +525,7 @@ public int JobPanelHandler(Handle menu, MenuAction action, int client, int item)
 
 public void OnClientPostAdminCheck(int client) {
 	resetAmountVars();
+	g_iSpeedTimeLeft[client] = -1;
 }
 
 public void resetAmountVars() {
