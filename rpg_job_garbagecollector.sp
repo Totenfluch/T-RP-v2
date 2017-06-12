@@ -233,15 +233,15 @@ public void pickupGarbage(int client, int ent, int garbageId) {
 	int extraChance = perks_hasPerk(client, "Double Garbage 4") ? 80 : 
 	perks_hasPerk(client, "Double Garbage 3") ? 60 : 
 	perks_hasPerk(client, "Double Garbage 2") ? 40 : 
-	perks_hasPerk(client, "Double Garbage 2") ? 20 : 0;
+	perks_hasPerk(client, "Double Garbage 1") ? 20 : 0;
 	
 	if (GetRandomInt(0, 100) < extraChance)
 		inventory_givePlayerItem(client, "Garbage", 10, "", "Junk", "Garbage Collector", 1, "Collected (Double Perk)");
 	
-	int rareChance = perks_hasPerk(client, "Rare Loot 1") ? 1 : 
-	perks_hasPerk(client, "Rare Loot 2") ? 2 : 
+	int rareChance = perks_hasPerk(client, "Rare Loot 4") ? 5 : 
 	perks_hasPerk(client, "Rare Loot 3") ? 3 : 
-	perks_hasPerk(client, "Rare Loot 4") ? 5 : 0;
+	perks_hasPerk(client, "Rare Loot 2") ? 2 : 
+	perks_hasPerk(client, "Rare Loot 1") ? 1 : 0;
 	
 	if (GetRandomInt(0, 100) < rareChance) {
 		int which = GetRandomInt(0, 4);
@@ -272,9 +272,11 @@ public void pickupGarbage(int client, int ent, int garbageId) {
 	}
 	
 	if (perks_hasPerk(client, "Pickup Speed Boost 1")) {
+		PrintToChat(client, "[-T-] Increased your Speed for 3s...");
 		SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 1.1);
 		g_iSpeedTimeLeft[client] = 3;
 	} else if (perks_hasPerk(client, "Pickup Speed Boost 2")) {
+		PrintToChat(client, "[-T-] Increased your Speed for 5s...");
 		SetEntPropFloat(client, Prop_Data, "m_flLaggedMovementValue", 1.15);
 		g_iSpeedTimeLeft[client] = 5;
 	}

@@ -494,7 +494,9 @@ public Action OnPlayerRunCmd(int client, int &iButtons, int &iImpulse, float fVe
 								jobs_startProgressBar(client, 50, "Confiscate Plant");
 								g_iHarvestIndex[client] = ent;
 							} else {
-								if (perks_hasPerk(client, "Drug Harvest Boost 2"))
+								if (perks_hasPerk(client, "Drug Harvest Boost 3"))
+									jobs_startProgressBar(client, 60, "Harvest Plant");
+								else if (perks_hasPerk(client, "Drug Harvest Boost 2"))
 									jobs_startProgressBar(client, 90, "Harvest Plant");
 								else if (perks_hasPerk(client, "Drug Harvest Boost 1"))
 									jobs_startProgressBar(client, 120, "Harvest Plant");
@@ -562,6 +564,16 @@ public void jobs_OnProgressBarFinished(int client, char info[64]) {
 		char addCurrencyReason[256];
 		Format(addCurrencyReason, sizeof(addCurrencyReason), "Papaver Harvesting (Level %i)", jobs_getLevel(client));
 		inventory_givePlayerItem(client, "Papaver", 50, "", "Crafting Materials", "Papaver Harvesting", 1, addCurrencyReason);
+		
+		int extraChance = perks_hasPerk(client, "Double Papaver 4") ? 20 : 
+		perks_hasPerk(client, "Double Papaver 3") ? 15 : 
+		perks_hasPerk(client, "Double Papaver 2") ? 10 : 
+		perks_hasPerk(client, "Double Papaver 1") ? 5 : 0;
+		
+		if (GetRandomInt(0, 100) < extraChance)
+			inventory_givePlayerItem(client, "Papaver", 50, "", "Crafting Materials", "Papaver Harvesting", 1, "Papaver Harvesting (Perk)");
+		
+		
 		tCrime_addCrime(client, 5);
 	}
 	if (StrEqual(info, "Crush Papaver")) {
@@ -574,8 +586,18 @@ public void jobs_OnProgressBarFinished(int client, char info[64]) {
 	} else if (StrEqual(info, "Mix Heroin")) {
 		if (inventory_hasPlayerItem(client, "Crushed Papaver") && inventory_hasPlayerItem(client, "Morphine")) {
 			if (inventory_removePlayerItems(client, "Crushed Papaver", 1, "Mixed Heroin") && inventory_removePlayerItems(client, "Morphine", 1, "Mixed Heroin")) {
+				
+				int heroinXp = perks_hasPerk(client, "Heroin XP 2") ? 60 : perks_hasPerk(client, "Heroin XP 1") ? 50 : 40;
+				
 				inventory_givePlayerItem(client, "Heroin", 1, "", "Drugs", "Criminal", 3, "Mixed Heroin");
-				jobs_addExperience(client, 40, "Drug Planter");
+				
+				int extraChance = perks_hasPerk(client, "Double Heroin 2") ? 10 : perks_hasPerk(client, "Double Heroin 1") ? 5 : 0;
+				
+				if (GetRandomInt(0, 100) < extraChance)
+					inventory_givePlayerItem(client, "Heroin", 1, "", "Drugs", "Criminal", 3, "Mixed Heroin (Perk)");
+				
+				
+				jobs_addExperience(client, heroinXp, "Drug Planter");
 				tCrime_addCrime(client, 50);
 			}
 		}
@@ -759,6 +781,11 @@ public void furniture_OnFurnitureInteract(int entity, int client, char name[64],
 		return;
 	}
 	
-	if (inventory_hasPlayerItem(client, "Crushed Papaver") && inventory_hasPlayerItem(client, "Morphine"))
-		jobs_startProgressBar(client, 75, "Mix Heroin");
+	if (inventory_hasPlayerItem(client, "Crushed Papaver") && inventory_hasPlayerItem(client, "Morphine")) {
+		if (perks_hasPerk(client, "Heroin Mix Speed")) {
+			jobs_startProgressBar(client, 50, "Mix Heroin");
+		} else {
+			jobs_startProgressBar(client, 75, "Mix Heroin");
+		}
+	}
 }
