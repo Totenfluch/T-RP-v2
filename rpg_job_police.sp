@@ -35,13 +35,11 @@
 #include <multicolors>
 #include <cstrike>
 #include <rpg_jail>
+#include <tStocks>
 
 #pragma newdecls required
 
 #define MAX_CUFF_TIME 90
-
-Handle g_hPlayTimeNeededForPolice;
-int g_iPlayTimeNeededForPolice = 18000;
 
 
 /* Special Stuff Values */
@@ -175,6 +173,9 @@ int g_iSkin2Value;
 Handle g_hSkin3Value;
 int g_iSkin3Value;
 
+Handle g_hBarricadeValue;
+int g_iBarricadeValue;
+
 
 int g_iHaloSprite;
 int g_iFire;
@@ -234,8 +235,6 @@ public void OnPluginStart() {
 	AutoExecConfig_SetFile("rpg_job_police");
 	AutoExecConfig_SetCreateFile(true);
 	
-	g_hPlayTimeNeededForPolice = AutoExecConfig_CreateConVar("rpg_playTimeForPolice", "180000", "Playtime needed for Police in seconds");
-	
 	g_hHandCuffsPrice = AutoExecConfig_CreateConVar("rpg_handcuffs", "30", "Price of the handcuffs in menu");
 	g_hKevlarPrice = AutoExecConfig_CreateConVar("rpg_kevlar", "35", "Price of the kevlar in menu");
 	g_hHelmetKevlarPrice = AutoExecConfig_CreateConVar("rpg_helmetkevlar", "35", "Price of the helmetkevlar in menu");
@@ -292,6 +291,8 @@ public void OnPluginStart() {
 	g_hSkin2Value = AutoExecConfig_CreateConVar("rpg_police_skin_2_cost", "250", "Cost of 'Police 2' Skin");
 	g_hSkin3Value = AutoExecConfig_CreateConVar("rpg_police_skin_3_cost", "250", "Cost of 'Police 3' Skin");
 	
+	g_hBarricadeValue = AutoExecConfig_CreateConVar("rpg_police_barricade_cost", "500", "Cost of a Barricade");
+	
 	AutoExecConfig_CleanFile();
 	AutoExecConfig_ExecuteFile();
 	
@@ -321,8 +322,6 @@ public int Native_isPlayerCuffed(Handle plugin, int numParams) {
 }
 
 public void OnConfigsExecuted() {
-	g_iPlayTimeNeededForPolice = GetConVarInt(g_hPlayTimeNeededForPolice);
-	
 	g_iHandCuffsPrice = GetConVarInt(g_hHandCuffsPrice);
 	g_iKevlarPrice = GetConVarInt(g_hKevlarPrice);
 	g_iHelmetKevlarPrice = GetConVarInt(g_hHelmetKevlarPrice);
@@ -371,6 +370,8 @@ public void OnConfigsExecuted() {
 	g_iSkin2Value = GetConVarInt(g_hSkin2Value);
 	g_iSkin3Value = GetConVarInt(g_hSkin3Value);
 	
+	g_iBarricadeValue = GetConVarInt(g_hBarricadeValue);
+	
 	GetConVarString(gc_sOverlayCuffsPath, g_sSoundCuffsPath, sizeof(g_sSoundCuffsPath));
 	GetConVarString(gc_sSoundCuffsPath, g_sSoundCuffsPath, sizeof(g_sSoundCuffsPath));
 	GetConVarString(gc_sSoundBreakCuffsPath, g_sSoundBreakCuffsPath, sizeof(g_sSoundBreakCuffsPath));
@@ -403,7 +404,7 @@ public void showTopPanelToClient(int client) {
 		DrawPanelItem(wPanel, "Shotguns [3]", jobs_getLevel(client) >= 3 ? ITEMDRAW_DEFAULT:ITEMDRAW_DISABLED);
 		DrawPanelItem(wPanel, "Rifles [5]", jobs_getLevel(client) >= 5 ? ITEMDRAW_DEFAULT:ITEMDRAW_DISABLED);
 		DrawPanelItem(wPanel, "Special Weapons [6]", jobs_getLevel(client) >= 6 ? ITEMDRAW_DEFAULT:ITEMDRAW_DISABLED);
-		DrawPanelItem(wPanel, "Nades & Armour");
+		DrawPanelItem(wPanel, "Nades, Armor, Barricades");
 		DrawPanelText(wPanel, "^-.-^-.-^-.-^-.-^");
 		DrawPanelItem(wPanel, "Exit");
 		SendPanelToClient(wPanel, client, policeWeaponVendorHandler, 60);
@@ -827,6 +828,13 @@ public void showArmorHpPanelToClient(int client) {
 	else
 		AddMenuItem(rpgPanel, "9", skin3Item, ITEMDRAW_DISABLED);
 	
+	char barricadeItem[64];
+	Format(barricadeItem, sizeof(barricadeItem), "Police Barricade - %i Money", g_iBarricadeValue);
+	if (Money >= g_iBarricadeValue)
+		AddMenuItem(rpgPanel, "10", barricadeItem);
+	else
+		AddMenuItem(rpgPanel, "10", barricadeItem, ITEMDRAW_DISABLED);
+	
 	DisplayMenu(rpgPanel, client, 60);
 }
 
@@ -862,6 +870,9 @@ public int ArmorAndHPPanelHandler(Handle menu, MenuAction action, int client, in
 		} else if (id == 9) {
 			if (tConomy_removeCurrency(client, g_iSkin3Value, "Bought Item from Police Weapon Vendor") >= 0)
 				inventory_givePlayerItem(client, "Police 3", 0, "", "Skin", "Skin", 1, "Bought from Police Vendor");
+		} else if (id == 10) {
+			if (tConomy_removeCurrency(client, g_iBarricadeValue, "Bought Barricade from Police Weapon Vendor") >= 0)
+				inventory_givePlayerItem(client, "Police Barricade", 0, "", "Police Item", "Police Item", 1, "Bought from Police Vendor");
 		}
 	} else if (action == MenuAction_Cancel) {
 		showTopPanelToClient(client);
@@ -1083,19 +1094,15 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 {
 	char wName[128];
 	GetClientWeapon(client, wName, sizeof(wName));
-	if ((buttons & IN_ATTACK2))
-	{
-		if (StrContains(wName, "taser") != -1 && jobs_isActiveJob(client, "Police"))
-		{
+	if ((buttons & IN_ATTACK2)) {
+		if (StrContains(wName, "taser") != -1 && jobs_isActiveJob(client, "Police")) {
 			int Target = GetClientAimTarget(client, true);
 			
-			if (isValidClient(Target) && g_bCuffed[Target])
-			{
+			if (isValidClient(Target) && g_bCuffed[Target]) {
 				float distance = Entity_GetDistance(client, Target);
 				distance = Math_UnitsToMeters(distance);
 				
-				if ((gc_iHandCuffsDistance > distance) && !Client_IsLookingAtWall(client, Entity_GetDistance(client, Target) + 40.0))
-				{
+				if ((gc_iHandCuffsDistance > distance) && !Client_IsLookingAtWall(client, Entity_GetDistance(client, Target) + 40.0)) {
 					float origin[3];
 					GetClientAbsOrigin(client, origin);
 					float origin2[3];
@@ -1120,6 +1127,52 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 						TeleportEntity(Target, location2, NULL_VECTOR, NULL_VECTOR);
 					}
 					
+				}
+			}
+		} else if (jobs_isActiveJob(client, "Police")) {
+			int ent = GetClientAimTarget(client, false);
+			if (!isValidClient(ent)) {
+				if (ent > -1) {
+					char entName[64];
+					Entity_GetGlobalName(ent, entName, sizeof(entName));
+					if (StrEqual(entName, "Police Barricade")) {
+						float origin[3];
+						GetClientAbsOrigin(client, origin);
+						float origin2[3];
+						GetEntPropVector(ent, Prop_Data, "m_vecOrigin", origin2);
+						
+						if (GetVectorDistance(origin, origin2) <= 200.0) {
+							AcceptEntityInput(ent, "kill");
+							inventory_givePlayerItem(client, "Police Barricade", 0, "", "Police Item", "Police Item", 1, "Picked up Barricade");
+						}
+					}
+				}
+			}
+		}
+	} else if ((buttons & IN_USE) && jobs_isActiveJob(client, "Police")) {
+		int ent = GetClientAimTarget(client, false);
+		if (!isValidClient(ent)) {
+			if (ent > -1) {
+				char entName[64];
+				Entity_GetGlobalName(ent, entName, sizeof(entName));
+				if (StrEqual(entName, "Police Barricade")) {
+					float origin[3];
+					GetClientAbsOrigin(client, origin);
+					float origin2[3];
+					GetEntPropVector(ent, Prop_Data, "m_vecOrigin", origin2);
+					
+					if (GetVectorDistance(origin, origin2) <= 200.0) {
+						float location[3];
+						GetClientEyePosition(client, location);
+						float ang[3];
+						GetClientAbsAngles(client, ang);
+						float location2[3];
+						location2[0] = (location[0] + (50 * ((Cosine(DegToRad(ang[1]))) * (Cosine(DegToRad(ang[0]))))));
+						location2[1] = (location[1] + (50 * ((Sine(DegToRad(ang[1]))) * (Cosine(DegToRad(ang[0]))))));
+						location2[2] = origin[2];
+						
+						TeleportEntity(ent, location2, ang, NULL_VECTOR);
+					}
 				}
 			}
 		}
@@ -1565,6 +1618,9 @@ public void OnMapStart()
 	PrecacheSoundAnyDownload(g_sSoundBreakCuffsPath);
 	PrecacheSoundAnyDownload(g_sSoundUnLockCuffsPath);
 	PrecacheDecalAnyDownload(g_sOverlayCuffsPath);
+	
+	PrecacheModel("models/props_fortifications/police_barrier001_128_reference.mdl");
+	inventory_addItemHandle("Police Barricade", 1);
 }
 
 public Action incomeTimer(Handle Timer) {
@@ -1572,7 +1628,7 @@ public Action incomeTimer(Handle Timer) {
 		if (!isValidClient(i))
 			continue;
 		if (jobs_isActiveJob(i, "Police"))
-			tConomy_addBankCurrency(i, jobs_getLevel(i) * 20 + 50, "Police Salary");
+			tConomy_addBankCurrency(i, jobs_getLevel(i) * 40 + 80, "Police Salary");
 	}
 }
 
@@ -1684,10 +1740,6 @@ stock void StripZeus(int client)
 			}
 		}
 	}
-}
-
-stock bool isValidClient(int client) {
-	return (1 <= client <= MaxClients && IsClientInGame(client));
 }
 
 stock void PrecacheModelAnyDownload(char[] sModel)
@@ -1848,11 +1900,11 @@ public bool TraceRayDontHitPlayerAndWorld(int entityhit, int mask) {
 }
 
 public Action onWeaponDrop(int client, int weapon) {
-	if (jobs_isActiveJob(client, "Police")) {
-		PrintToChat(client, "You can not Drop weapons as Police officer");
-		return Plugin_Handled;
-	}
-	return Plugin_Continue;
+	//if (jobs_isActiveJob(client, "Police")) {
+	PrintToChat(client, "You can not drop Weapons");
+	return Plugin_Handled;
+	//}
+	//return Plugin_Continue;
 }
 
 public void logAction(int officer, int target, char[] action, char[] action_params) {
@@ -1870,4 +1922,93 @@ public void logAction(int officer, int target, char[] action, char[] action_para
 public void SQLErrorCheckCallback(Handle owner, Handle hndl, const char[] error, any data) {
 	if (!StrEqual(error, ""))
 		LogError(error);
+}
+
+public void inventory_onItemUsed(int client, char itemname[128], int weight, char category[64], char category2[64], int rarity, char timestamp[64], int slot) {
+	if (!StrEqual(itemname, "Police Barricade"))
+		return;
+	
+	Menu m = CreateMenu(barricadeHandler);
+	SetMenuTitle(m, "What to do with 'Police Barriacde'?");
+	AddMenuItem(m, "place", "Place Barricade");
+	AddMenuItem(m, "throw", "Throw Away");
+	AddMenuItem(m, "nothing", "Nothing");
+	DisplayMenu(m, client, MENU_TIME_FOREVER);
+}
+
+public int barricadeHandler(Handle menu, MenuAction action, int client, int item) {
+	if (action == MenuAction_Select) {
+		char cValue[32];
+		GetMenuItem(menu, item, cValue, sizeof(cValue));
+		
+		if (StrEqual(cValue, "place")) {
+			if (jobs_isActiveJob(client, "Police")) {
+				spawnBarricade(client);
+			} else {
+				PrintToChat(client, "[-T-] You are not an Officer.");
+			}
+		} else if (StrEqual(cValue, "throw")) {
+			inventory_removePlayerItems(client, "Police Barricade", 1, "Throwed away");
+		}
+	}
+	if (action == MenuAction_End) {
+		delete menu;
+	}
+}
+
+public void spawnBarricade(int client) {
+	if (!isValidClient(client))
+		return;
+	if (!inventory_hasPlayerItem(client, "Police Barricade")) {
+		PrintToChat(client, "[-T-] You have no barricade...");
+		return;
+	}
+	
+	float pos[3];
+	pos = GetAimOrigin(client);
+	
+	float angles[3];
+	GetClientAbsAngles(client, angles);
+	
+	int barricadeEnt = CreateEntityByName("prop_dynamic_override");
+	if (barricadeEnt == -1)
+		return;
+	char modelPath[128];
+	Format(modelPath, sizeof(modelPath), "models/props_fortifications/police_barrier001_128_reference.mdl");
+	SetEntityModel(barricadeEnt, modelPath);
+	DispatchKeyValue(barricadeEnt, "Solid", "6");
+	SetEntProp(barricadeEnt, Prop_Send, "m_nSolidType", 6);
+	SetEntProp(barricadeEnt, Prop_Data, "m_CollisionGroup", COLLISION_GROUP_NONE);
+	
+	SetEntPropFloat(barricadeEnt, Prop_Send, "m_flModelScale", 1.0);
+	DispatchSpawn(barricadeEnt);
+	
+	TeleportEntity(barricadeEnt, pos, angles, NULL_VECTOR);
+	Entity_SetGlobalName(barricadeEnt, "Police Barricade");
+	
+	inventory_removePlayerItems(client, "Police Barricade", 1, "Used Barricade");
+}
+
+stock float[3] GetAimOrigin(int client) {
+	float vAngles[3];
+	float fOrigin[3];
+	float hOrigin[3];
+	GetClientEyePosition(client, fOrigin);
+	GetClientEyeAngles(client, vAngles);
+	
+	Handle trace = TR_TraceRayFilterEx(fOrigin, vAngles, MASK_SHOT, RayType_Infinite, TraceEntityFilterPlayer);
+	
+	if (TR_DidHit(trace))
+	{
+		TR_GetEndPosition(hOrigin, trace);
+		CloseHandle(trace);
+		return hOrigin;
+	}
+	
+	CloseHandle(trace);
+	return hOrigin;
+}
+
+public bool TraceEntityFilterPlayer(int entity, int contentsMask) {
+	return (entity > GetMaxClients());
 } 
