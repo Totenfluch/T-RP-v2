@@ -428,7 +428,7 @@ public Action OnPlayerRunCmd(int client, int &iButtons, int &iImpulse, float fVe
 						GetClientAbsOrigin(client, ppos);
 						if (GetVectorDistance(ppos, pos) < 100.0) {
 							if (jobs_isActiveJob(client, "Gardener")) {
-								jobs_startProgressBar(client, 60, "Harvest Plant");
+								jobs_startProgressBar(client, 60, "Harvest Garden Plant");
 								g_iHarvestIndex[client] = ent;
 							} else {
 								CPrintToChat(client, "{red}You have to be a Gardener to harvest this Plant");
@@ -476,7 +476,7 @@ public void jobs_OnProgressBarFinished(int client, char info[64]) {
 	if (!jobs_isActiveJob(client, "Gardener"))
 		return;
 	
-	if (StrContains(info, "Harvest Plant") != -1) {
+	if (StrContains(info, "Harvest Garden Plant") != -1) {
 		int plantId;
 		if ((plantId = findPlantLoadedIdByIndex(g_iHarvestIndex[client])) == -1)
 			return;
