@@ -337,10 +337,7 @@ public Action refreshTimer(Handle Timer) {
 
 public void updatePlant(int plantId) {
 	char updatePlantQuery[1024];
-	Format(updatePlantQuery, sizeof(updatePlantQuery), "UPDATE t_rpg_drugs SET time = %i WHERE flags = '%s';", g_ePlayerPlants[plantId][pTime], g_ePlayerPlants[plantId][pFlags]);
-	SQL_TQuery(g_DB, SQLErrorCheckCallback, updatePlantQuery);
-	
-	Format(updatePlantQuery, sizeof(updatePlantQuery), "UPDATE t_rpg_drugs SET state = %i WHERE flags = '%s';", g_ePlayerPlants[plantId][pState], g_ePlayerPlants[plantId][pFlags]);
+	Format(updatePlantQuery, sizeof(updatePlantQuery), "UPDATE t_rpg_drugs SET time = %i, state = %i WHERE flags = '%s';", g_ePlayerPlants[plantId][pTime], g_ePlayerPlants[plantId][pState], g_ePlayerPlants[plantId][pFlags]);
 	SQL_TQuery(g_DB, SQLErrorCheckCallback, updatePlantQuery);
 }
 

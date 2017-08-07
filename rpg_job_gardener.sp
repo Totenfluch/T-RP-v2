@@ -397,13 +397,7 @@ public void deletePlant(int ent, int plantId) {
 
 public void updatePlant(int plantId) {
 	char updatePlantQuery[1024];
-	Format(updatePlantQuery, sizeof(updatePlantQuery), "UPDATE t_rpg_gardener_plants SET plantTime = %i WHERE plantCreated = '%s' AND playerid = '%s';", g_ePlayerPlants[plantId][pTime], g_ePlayerPlants[plantId][pCreatedTime], g_ePlayerPlants[plantId][pOwner]);
-	SQL_TQuery(g_DB, SQLErrorCheckCallback, updatePlantQuery);
-	
-	Format(updatePlantQuery, sizeof(updatePlantQuery), "UPDATE t_rpg_gardener_plants SET plantLevel = %i WHERE plantCreated = '%s' AND playerid = '%s';", g_ePlayerPlants[plantId][pState], g_ePlayerPlants[plantId][pCreatedTime], g_ePlayerPlants[plantId][pOwner]);
-	SQL_TQuery(g_DB, SQLErrorCheckCallback, updatePlantQuery);
-	
-	Format(updatePlantQuery, sizeof(updatePlantQuery), "UPDATE t_rpg_gardener_plants SET plantName = '%s' WHERE plantCreated = '%s' AND playerid = '%s';", g_ePlayerPlants[plantId][pModel], g_ePlayerPlants[plantId][pCreatedTime], g_ePlayerPlants[plantId][pOwner]);
+	Format(updatePlantQuery, sizeof(updatePlantQuery), "UPDATE t_rpg_gardener_plants SET plantTime = %i, plantLevel = %i, plantName = '%s' WHERE plantCreated = '%s' AND playerid = '%s';", g_ePlayerPlants[plantId][pTime], g_ePlayerPlants[plantId][pState], g_ePlayerPlants[plantId][pModel], g_ePlayerPlants[plantId][pCreatedTime], g_ePlayerPlants[plantId][pOwner]);
 	SQL_TQuery(g_DB, SQLErrorCheckCallback, updatePlantQuery);
 }
 
@@ -488,7 +482,7 @@ public void jobs_OnProgressBarFinished(int client, char info[64]) {
 			return;
 		harvestPlant(client, g_iHarvestIndex[client], plantId, g_ePlayerPlants[plantId][pState]);
 		
-	} else if (StrContains(info, "Gardening", false) == -1) {
+	} else if (StrContains(info, "Gardening", false) != -1) {
 		if (g_iPlayerZoneId[client] == -1)
 			return;
 		
