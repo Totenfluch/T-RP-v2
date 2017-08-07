@@ -39,7 +39,7 @@
 
 #define MAX_ZONES 128
 #define MAX_PLANTS 1024
-#define TIME_TO_NEXT_STAGE 120
+#define TIME_TO_NEXT_STAGE 240
 
 int g_iPlayerPrevButtons[MAXPLAYERS + 1];
 bool g_bPlayerInGardenerZone[MAXPLAYERS + 1];
@@ -50,7 +50,7 @@ char g_cGardenerZones[MAX_ZONES][PLATFORM_MAX_PATH];
 int g_iGardenerZoneCooldown[MAXPLAYERS + 1][MAX_ZONES];
 int g_iLoadedZones = 0;
 
-int g_iZoneCooldown = 320;
+int g_iZoneCooldown = 400;
 int MAX_COLLECT = 5;
 
 char activeZone[MAXPLAYERS + 1][128];
@@ -173,8 +173,8 @@ public void plantSeeds(int client, char[] plantName) {
 		return;
 	}
 	
-	if (getActivePlantsOfPlayerAmount(client) >= (2 + jobs_getLevel(client))) {
-		CPrintToChat(client, "[-T-]{red} You can not have more than %i active plants (%i Active)", (2 + jobs_getLevel(client)), getActivePlantsOfPlayerAmount(client));
+	if (getActivePlantsOfPlayerAmount(client) >= (2 + jobs_getLevel(client) / 2)) {
+		CPrintToChat(client, "[-T-]{red} You can not have more than %i active plants (%i Active)", (2 + jobs_getLevel(client) / 2), getActivePlantsOfPlayerAmount(client));
 		return;
 	}
 	
@@ -496,7 +496,7 @@ public void jobs_OnProgressBarFinished(int client, char info[64]) {
 			g_iGardenerZoneCooldown[client][g_iPlayerZoneId[client]] = g_iZoneCooldown + GetRandomInt(0, 50);
 		char addCurrencyReason[256];
 		Format(addCurrencyReason, sizeof(addCurrencyReason), "Gardening (Level %i)", jobs_getLevel(client));
-		tConomy_addBankCurrency(client, 35 + jobs_getLevel(client) * 5, "Gardening");
+		tConomy_addBankCurrency(client, 55 + jobs_getLevel(client) * 5, "Gardening");
 		if (perks_hasPerk(client, "Gardener XP Boost4"))
 			jobs_addExperience(client, 45, "Gardener");
 		else if (perks_hasPerk(client, "Gardener XP Boost3"))
@@ -512,7 +512,7 @@ public void jobs_OnProgressBarFinished(int client, char info[64]) {
 }
 
 public void harvestPlant(int client, int ent, int plantId, int state) {
-	jobs_addExperience(client, state * 100, "Gardener");
+	jobs_addExperience(client, state * 150, "Gardener");
 	
 	char resultItem[128];
 	
@@ -600,20 +600,20 @@ public void OnNpcInteract(int client, char npcType[64], char UniqueId[128], int 
 		AddMenuItem(menu, "x", "Are you having a nice day?", ITEMDRAW_DISABLED);
 		AddMenuItem(menu, "skin1", "First Gardener Skin [2](500$)", tConomy_getCurrency(client) >= 500 && jobs_getLevel(client) >= 2 ? ITEMDRAW_DEFAULT : ITEMDRAW_DISABLED);
 		
-		if (tConomy_getCurrency(client) >= 250 && jobs_isActiveJob(client, "Gardener") && jobs_getLevel(client) >= 3)
-			AddMenuItem(menu, "EggplantSeeds", "Buy a Eggplant Seed (250$)[3]");
+		if (tConomy_getCurrency(client) >= 75 && jobs_isActiveJob(client, "Gardener") && jobs_getLevel(client) >= 3)
+			AddMenuItem(menu, "EggplantSeeds", "Buy a Eggplant Seed (75$)[3]");
 		else
-			AddMenuItem(menu, "x", "Buy a Eggplant Seed (250$)[3]", ITEMDRAW_DISABLED);
+			AddMenuItem(menu, "x", "Buy a Eggplant Seed (75$)[3]", ITEMDRAW_DISABLED);
 		
-		if (tConomy_getCurrency(client) >= 350 && jobs_isActiveJob(client, "Gardener") && jobs_getLevel(client) >= 5)
-			AddMenuItem(menu, "StawberrySeeds", "Buy a Stawberry Seed (350$)[5]");
+		if (tConomy_getCurrency(client) >= 125 && jobs_isActiveJob(client, "Gardener") && jobs_getLevel(client) >= 5)
+			AddMenuItem(menu, "StawberrySeeds", "Buy a Stawberry Seed (125$)[5]");
 		else
-			AddMenuItem(menu, "x", "Buy a Stawberry Seed (350$)[5]", ITEMDRAW_DISABLED);
+			AddMenuItem(menu, "x", "Buy a Stawberry Seed (125$)[5]", ITEMDRAW_DISABLED);
 		
-		if (tConomy_getCurrency(client) >= 500 && jobs_isActiveJob(client, "Gardener") && jobs_getLevel(client) >= 7)
-			AddMenuItem(menu, "PumpkinSeeds", "Buy a Pumpkin Seed (500$)[7]");
+		if (tConomy_getCurrency(client) >= 200 && jobs_isActiveJob(client, "Gardener") && jobs_getLevel(client) >= 11)
+			AddMenuItem(menu, "PumpkinSeeds", "Buy a Pumpkin Seed (200$)[11]");
 		else
-			AddMenuItem(menu, "x", "Buy a Pumpkin Seed (500$)[7]", ITEMDRAW_DISABLED);
+			AddMenuItem(menu, "x", "Buy a Pumpkin Seed (200$)[11]", ITEMDRAW_DISABLED);
 		
 		if (inventory_hasPlayerItem(client, "Eggplant"))
 			AddMenuItem(menu, "sellEggplant", "Sell Eggplant");
@@ -661,44 +661,44 @@ public int JobPanelHandler(Handle menu, MenuAction action, int client, int item)
 			}
 		} else if (StrEqual(cValue, "sellEggplant")) {
 			if (inventory_hasPlayerItem(client, "Eggplant")) {
-				tConomy_addCurrency(client, 250, "Sold Eggplant to Vendor");
+				tConomy_addCurrency(client, 100, "Sold Eggplant to Vendor");
 				inventory_removePlayerItems(client, "Eggplant", 1, "Sold to Vendor");
 			}
 		} else if (StrEqual(cValue, "SellEggplants")) {
 			int itemamount = inventory_getPlayerItemAmount(client, "Eggplant");
 			if (inventory_removePlayerItems(client, "Eggplant", itemamount, "Sold to Vendor (Mass Sell)"))
-				tConomy_addCurrency(client, 250 * itemamount, "Sold Eggplant to Vendor");
+				tConomy_addCurrency(client, 100 * itemamount, "Sold Eggplant to Vendor");
 		} else if (StrEqual(cValue, "sellStrawberry")) {
 			if (inventory_hasPlayerItem(client, "Strawberry")) {
-				tConomy_addCurrency(client, 350, "Sold Strawberry to Vendor");
+				tConomy_addCurrency(client, 125, "Sold Strawberry to Vendor");
 				inventory_removePlayerItems(client, "Strawberry", 1, "Sold to Vendor");
 			}
 		} else if (StrEqual(cValue, "SellStrawberrys")) {
 			int itemamount = inventory_getPlayerItemAmount(client, "Strawberry");
 			if (inventory_removePlayerItems(client, "Strawberry", itemamount, "Sold to Vendor (Mass Sell)"))
-				tConomy_addCurrency(client, 350 * itemamount, "Sold Strawberry to Vendor");
+				tConomy_addCurrency(client, 125 * itemamount, "Sold Strawberry to Vendor");
 		} else if (StrEqual(cValue, "sellPumpkin")) {
 			if (inventory_hasPlayerItem(client, "Pumpkin")) {
-				tConomy_addCurrency(client, 500, "Sold Pumpkin to Vendor");
+				tConomy_addCurrency(client, 150, "Sold Pumpkin to Vendor");
 				inventory_removePlayerItems(client, "Pumpkin", 1, "Sold to Vendor");
 			}
 		} else if (StrEqual(cValue, "SellPumpkins")) {
 			int itemamount = inventory_getPlayerItemAmount(client, "Pumpkin");
 			if (inventory_removePlayerItems(client, "Pumpkin", itemamount, "Sold to Vendor (Mass Sell)"))
-				tConomy_addCurrency(client, 500 * itemamount, "Sold Pumpkin to Vendor");
+				tConomy_addCurrency(client, 150 * itemamount, "Sold Pumpkin to Vendor");
 		} else if (StrEqual(cValue, "EggplantSeeds")) {
-			if (tConomy_getCurrency(client) >= 250) {
-				tConomy_removeCurrency(client, 250, "Bought Eggplant Seeds");
+			if (tConomy_getCurrency(client) >= 75) {
+				tConomy_removeCurrency(client, 75, "Bought Eggplant Seeds");
 				inventory_givePlayerItem(client, "Eggplant Seeds", 1, "", "Plant seeds", "Gardener Item", 1, "Bought from Vendor");
 			}
 		} else if (StrEqual(cValue, "StawberrySeeds")) {
-			if (tConomy_getCurrency(client) >= 350) {
-				tConomy_removeCurrency(client, 350, "Bought Eggplant Seeds");
+			if (tConomy_getCurrency(client) >= 125) {
+				tConomy_removeCurrency(client, 125, "Bought Eggplant Seeds");
 				inventory_givePlayerItem(client, "Strawberry Seeds", 1, "", "Plant seeds", "Gardener Item", 1, "Bought from Vendor");
 			}
 		} else if (StrEqual(cValue, "PumpkinSeeds")) {
-			if (tConomy_getCurrency(client) >= 350) {
-				tConomy_removeCurrency(client, 350, "Bought Pumpkin Seeds");
+			if (tConomy_getCurrency(client) >= 200) {
+				tConomy_removeCurrency(client, 200, "Bought Pumpkin Seeds");
 				inventory_givePlayerItem(client, "Pumpkin Seeds", 1, "", "Plant seeds", "Gardener Item", 1, "Bought from Vendor");
 			}
 		}
