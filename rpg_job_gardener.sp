@@ -108,7 +108,7 @@ public void OnPluginStart() {
 }
 
 public Action cmdOnGStats(int client, int args) {
-	PrintToChatAll("InZone: %i Collected{0} %i Collected{1} %i ZoneID: %i Cd[1] %i Cd[1] %i", g_bPlayerInGardenerZone[client], g_iCollectedLoot[client][0], g_iCollectedLoot[client][1], g_iPlayerZoneId, g_iGardenerZoneCooldown[client][0], g_iGardenerZoneCooldown[client][1]);
+	PrintToChat(client, "InZone: %i Collected{0} %i Collected{1} %i ZoneID: %i Cd[1] %i Cd[1] %i", g_bPlayerInGardenerZone[client], g_iCollectedLoot[client][0], g_iCollectedLoot[client][1], g_iPlayerZoneId, g_iGardenerZoneCooldown[client][0], g_iGardenerZoneCooldown[client][1]);
 	return Plugin_Handled;
 }
 
@@ -253,7 +253,7 @@ public void SQLLoadPlantsQuery(Handle owner, Handle hndl, const char[] error, an
 		pos[0] = SQL_FetchFloatByName(hndl, "posX");
 		pos[1] = SQL_FetchFloatByName(hndl, "posY");
 		pos[2] = SQL_FetchFloatByName(hndl, "posZ");
-		PrintToChatAll("%s %i %i %.2f %.2f %.2f %i %s", plantowner, state, time, pos[0], pos[1], pos[2], creationTime, plantModel);
+		//PrintToChatAll("%s %i %i %.2f %.2f %.2f %i %s", plantowner, state, time, pos[0], pos[1], pos[2], creationTime, plantModel);
 		spawnPlant(plantowner, state, time, pos, creationTime, plantModel);
 	}
 	

@@ -206,7 +206,7 @@ public void OnNpcInteract(int client, char npcType[64], char UniqueId[128], int 
 	if (!jobs_isActiveJob(client, "Drug Planter"))
 		AddMenuItem(menu, "takejob", "Quit job and become a Drug Planter");
 	if (tConomy_getCurrency(client) >= 100 && jobs_isActiveJob(client, "Drug Planter"))
-		AddMenuItem(menu, "seeds", "Buy a seed (100)");
+		AddMenuItem(menu, "seeds", "Buy a Marijuana Seed (100$)");
 	else
 		AddMenuItem(menu, "x", "Buy a seed (100)", ITEMDRAW_DISABLED);
 	if (inventory_hasPlayerItem(client, "Fresh Marijuana"))
@@ -215,9 +215,9 @@ public void OnNpcInteract(int client, char npcType[64], char UniqueId[128], int 
 		AddMenuItem(menu, "x", "Sell Fresh Marijuana", ITEMDRAW_DISABLED);
 	if (jobs_isActiveJob(client, "Drug Planter") && jobs_getLevel(client) >= 2) {
 		if (tConomy_getCurrency(client) >= 2500)
-			AddMenuItem(menu, "lockpick", "Buy Lockpick (2500)");
+			AddMenuItem(menu, "lockpick", "Buy Lockpick (2500$)");
 		else
-			AddMenuItem(menu, "lockpick", "Buy Lockpick (2500)", ITEMDRAW_DISABLED);
+			AddMenuItem(menu, "lockpick", "Buy Lockpick (2500$)", ITEMDRAW_DISABLED);
 	}
 	if (inventory_hasPlayerItem(client, "Fresh Marijuana")) {
 		char sellAll[256];
@@ -429,7 +429,7 @@ public Action cmdPlantCommand(int client, int args) {
 	IntToString(time, flags, sizeof(flags));
 	
 	char createPlantQuery[512];
-	Format(createPlantQuery, sizeof(createPlantQuery), "INSERT INTO `t_rpg_drugs` (`playerid`, `state`, `time`, `flags`, `pos_x`, `pos_y`, `pos_z`) VALUES ('%s', '0', '0', '%s', '%.2f', '%f.2', '%f.2');", playerid, flags, pos[0], pos[1], pos[2]);
+	Format(createPlantQuery, sizeof(createPlantQuery), "INSERT INTO `t_rpg_drugs` (`playerid`, `state`, `time`, `flags`, `pos_x`, `pos_y`, `pos_z`) VALUES ('%s', '0', '0', '%s', '%.2f', '%.2f', '%.2f');", playerid, flags, pos[0], pos[1], pos[2]);
 	SQL_TQuery(g_DB, SQLErrorCheckCallback, createPlantQuery);
 	
 	spawnPlant(playerid, 0, 0, pos, flags);
