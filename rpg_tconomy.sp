@@ -289,7 +289,7 @@ public void OnClientPostAdminCheck(int client) {
 	SQL_TQuery(g_DB, SQLErrorCheckCallback, addClientQuery);
 	
 	g_bLoaded[client] = false;
-	CreateTimer(1.0, loadMoney, GetClientUserId(client));
+	loadMoney(client);
 }
 
 public bool addCurrency(int client, int amount, char reason[256], bool isBank) {
@@ -350,15 +350,14 @@ public int getCurrency(int client, bool isBank) {
 		return g_iMoney[client];
 }
 
-public Action loadMoney(Handle Timer, int client) {
+public void loadMoney(int client) {
 	if (!IsClientConnected(client))
 		return;
-	int client2 = GetClientOfUserId(client);
 	char playerid[20];
-	GetClientAuthId(client2, AuthId_Steam2, playerid, sizeof(playerid));
+	GetClientAuthId(client, AuthId_Steam2, playerid, sizeof(playerid));
 	char loadMoneyQuery[512];
 	Format(loadMoneyQuery, sizeof(loadMoneyQuery), "SELECT currency,bankCurrency FROM t_rpg_tConomy WHERE playerid = '%s'", playerid);
-	SQL_TQuery(g_DB, SQLLoadMoneyQueryCallback, loadMoneyQuery, GetClientUserId(client2));
+	SQL_TQuery(g_DB, SQLLoadMoneyQueryCallback, loadMoneyQuery, GetClientUserId(client));
 }
 
 public void logtConomyAction(int client, int amount, char reason[256], bool isBank) {
