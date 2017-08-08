@@ -120,6 +120,8 @@ public int Native_spawnMoneyLoot(Handle plugin, int numParams) {
 	pos[1] = GetNativeCell(2);
 	pos[2] = GetNativeCell(3);
 	int amount = GetNativeCell(4);
+	if(amount < 0)
+		ThrowNativeError(SP_ERROR_ABORTED, "Amount < 0; Can not spawn negative Money");
 	return spawnItem(pos, amount);
 }
 

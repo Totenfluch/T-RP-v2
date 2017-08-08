@@ -61,9 +61,10 @@ public Action onPlayerDeath(Handle event, const char[] name, bool dontBroadcast)
 	
 	float pos[3];
 	GetClientAbsOrigin(client, pos);
-	rpg_spawnMoneyLoot(pos[0], pos[1], pos[2], tConomy_getCurrency(client));
+	if (tConomy_getCurrency(client) > 0)
+		rpg_spawnMoneyLoot(pos[0], pos[1], pos[2], tConomy_getCurrency(client));
 	
-	tConomy_setCurrency(client, 0, "You died...");
+	tConomy_removeCurrency(client, tConomy_getCurrency(client), reason);
 	int maxItems = inventory_getClientItemsAmount(client);
 	for (int i = 0; i <= maxItems; i++) {
 		if (inventory_isValidItem(client, i)) {

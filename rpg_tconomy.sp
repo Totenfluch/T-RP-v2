@@ -208,7 +208,8 @@ public int Native_addCurrency(Handle plugin, int numParams) {
 	int amount = GetNativeCell(2);
 	char reason[256];
 	GetNativeString(3, reason, sizeof(reason));
-	addCurrency(client, amount, reason, false);
+	if(!addCurrency(client, amount, reason, false))
+		ThrowNativeError(SP_ERROR_ABORTED, "The Client is not loaded yet OR (client money + amount) < 0 (negative money bug prevented)");
 	return g_iMoney[client];
 }
 
@@ -217,7 +218,8 @@ public int Native_removeCurrency(Handle plugin, int numParams) {
 	int amount = GetNativeCell(2);
 	char reason[256];
 	GetNativeString(3, reason, sizeof(reason));
-	removeCurrency(client, amount, reason, false);
+	if(!removeCurrency(client, amount, reason, false))
+		ThrowNativeError(SP_ERROR_ABORTED, "The Client is not loaded yet OR (client money - amount) < 0 (negative money bug prevented)");
 	return g_iMoney[client];
 }
 
@@ -226,7 +228,8 @@ public int Native_setCurrency(Handle plugin, int numParams) {
 	int amount = GetNativeCell(2);
 	char reason[256];
 	GetNativeString(3, reason, sizeof(reason));
-	setCurrency(client, amount, reason, false);
+	if(!setCurrency(client, amount, reason, false))
+		ThrowNativeError(SP_ERROR_ABORTED, "The Client is not loaded yet OR the amount is negative");
 	return g_iMoney[client];
 }
 
@@ -286,11 +289,14 @@ public void OnClientPostAdminCheck(int client) {
 	SQL_TQuery(g_DB, SQLErrorCheckCallback, addClientQuery);
 	
 	g_bLoaded[client] = false;
-	CreateTimer(1.0, loadMoney, client);
+	CreateTimer(1.0, loadMoney, GetClientUserId(client));
 }
 
-public void addCurrency(int client, int amount, char reason[256], bool isBank) {
-	if (!g_bLoaded[client])return;
+public bool addCurrency(int client, int amount, char reason[256], bool isBank) {
+	if (!g_bLoaded[client])
+		return false;
+	if(!isBank && (g_iMoney[client] + amount < 0))
+		return false;
 	logtConomyAction(client, amount, reason, isBank);
 	
 	if (isBank)
@@ -298,12 +304,15 @@ public void addCurrency(int client, int amount, char reason[256], bool isBank) {
 	else
 		g_iMoney[client] += amount;
 	
-	forceCurrencyUpdateQuery(client);
-	forceNameUpdate(client);
+	forceCurrencyAndNameUpdateQuery(client);
+	return true;
 }
 
-public void removeCurrency(int client, int amount, char reason[256], bool isBank) {
-	if (!g_bLoaded[client])return;
+public bool removeCurrency(int client, int amount, char reason[256], bool isBank) {
+	if (!g_bLoaded[client])
+		return false;
+	if(!isBank && (g_iMoney[client] - amount < 0))
+		return false;
 	logtConomyAction(client, -amount, reason, isBank);
 	
 	if (isBank)
@@ -311,12 +320,15 @@ public void removeCurrency(int client, int amount, char reason[256], bool isBank
 	else
 		g_iMoney[client] -= amount;
 	
-	forceCurrencyUpdateQuery(client);
-	forceNameUpdate(client);
+	forceCurrencyAndNameUpdateQuery(client);
+	return true;
 }
 
-public void setCurrency(int client, int amount, char reason[256], bool isBank) {
-	if (!g_bLoaded[client])return;
+public bool setCurrency(int client, int amount, char reason[256], bool isBank) {
+	if (!g_bLoaded[client])
+		return false;
+	if(!isBank && amount < 0)
+		return false;
 	char reason2[256];
 	Format(reason2, sizeof(reason2), "SET %s", reason);
 	logtConomyAction(client, amount, reason2, isBank);
@@ -326,8 +338,8 @@ public void setCurrency(int client, int amount, char reason[256], bool isBank) {
 	else
 		g_iMoney[client] = amount;
 	
-	forceCurrencyUpdateQuery(client);
-	forceNameUpdate(client);
+	forceCurrencyAndNameUpdateQuery(client);
+	return true;
 }
 
 public int getCurrency(int client, bool isBank) {
@@ -341,15 +353,16 @@ public int getCurrency(int client, bool isBank) {
 public Action loadMoney(Handle Timer, int client) {
 	if (!IsClientConnected(client))
 		return;
+	int client2 = GetClientOfUserId(client);
 	char playerid[20];
-	GetClientAuthId(client, AuthId_Steam2, playerid, sizeof(playerid));
+	GetClientAuthId(client2, AuthId_Steam2, playerid, sizeof(playerid));
 	char loadMoneyQuery[512];
 	Format(loadMoneyQuery, sizeof(loadMoneyQuery), "SELECT currency,bankCurrency FROM t_rpg_tConomy WHERE playerid = '%s'", playerid);
-	SQL_TQuery(g_DB, SQLLoadMoneyQueryCallback, loadMoneyQuery, GetClientUserId(client));
+	SQL_TQuery(g_DB, SQLLoadMoneyQueryCallback, loadMoneyQuery, GetClientUserId(client2));
 }
 
 public void logtConomyAction(int client, int amount, char reason[256], bool isBank) {
-	if (amount == 0)
+	if (amount == 0 && StrContains(reason, "SET") == -1)
 		return;
 	char playerLog[256];
 	if (isBank)
@@ -372,7 +385,7 @@ public void logtConomyAction(int client, int amount, char reason[256], bool isBa
 	SQL_TQuery(g_DB, SQLErrorCheckCallback, logQuery);
 }
 
-public void forceNameUpdate(int client) {
+public void forceCurrencyAndNameUpdateQuery(int client) {
 	char playerid[20];
 	GetClientAuthId(client, AuthId_Steam2, playerid, sizeof(playerid));
 	
@@ -381,21 +394,8 @@ public void forceNameUpdate(int client) {
 	char clean_playername[MAX_NAME_LENGTH * 2 + 16];
 	SQL_EscapeString(g_DB, playername, clean_playername, sizeof(clean_playername));
 	
-	char playernameUpdateQuery[512];
-	Format(playernameUpdateQuery, sizeof(playernameUpdateQuery), "UPDATE t_rpg_tConomy SET playername = '%s' WHERE playerid = '%s'", clean_playername, playerid);
-	SQL_TQuery(g_DB, SQLErrorCheckCallback, playernameUpdateQuery);
-}
-
-public void forceCurrencyUpdateQuery(int client) {
-	char playerid[20];
-	GetClientAuthId(client, AuthId_Steam2, playerid, sizeof(playerid));
-	
-	char bankCurrencyUpdateQuery[512];
-	Format(bankCurrencyUpdateQuery, sizeof(bankCurrencyUpdateQuery), "UPDATE t_rpg_tConomy SET bankCurrency = %i WHERE playerid = '%s'", g_iBankedMoney[client], playerid);
-	SQL_TQuery(g_DB, SQLErrorCheckCallback, bankCurrencyUpdateQuery);
-	
 	char CurrencyUpdateQuery[512];
-	Format(CurrencyUpdateQuery, sizeof(CurrencyUpdateQuery), "UPDATE t_rpg_tConomy SET currency = %i WHERE playerid = '%s'", g_iMoney[client], playerid);
+	Format(CurrencyUpdateQuery, sizeof(CurrencyUpdateQuery), "UPDATE t_rpg_tConomy SET currency = %i, SET bankCurrency = %i, SET playername = '%s' WHERE playerid = '%s';", g_iMoney[client], g_iBankedMoney[client], clean_playername, playerid);
 	SQL_TQuery(g_DB, SQLErrorCheckCallback, CurrencyUpdateQuery);
 }
 
@@ -490,6 +490,8 @@ public void SQLLoadMoneyQueryCallback(Handle owner, Handle hndl, const char[] er
 	int client = GetClientOfUserId(data);
 	while (SQL_FetchRow(hndl)) {
 		g_iMoney[client] = SQL_FetchIntByName(hndl, "curency");
+		if(g_iMoney[client] < 0)
+			setCurrency(client, 0, "Reset of Negative Money", false);
 		g_iBankedMoney[client] = SQL_FetchIntByName(hndl, "bankCurrency");
 		g_bLoaded[client] = true;
 	}
