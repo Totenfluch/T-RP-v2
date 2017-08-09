@@ -394,7 +394,7 @@ public void forceCurrencyAndNameUpdateQuery(int client) {
 	SQL_EscapeString(g_DB, playername, clean_playername, sizeof(clean_playername));
 	
 	char CurrencyUpdateQuery[512];
-	Format(CurrencyUpdateQuery, sizeof(CurrencyUpdateQuery), "UPDATE t_rpg_tConomy SET currency = %i, SET bankCurrency = %i, SET playername = '%s' WHERE playerid = '%s';", g_iMoney[client], g_iBankedMoney[client], clean_playername, playerid);
+	Format(CurrencyUpdateQuery, sizeof(CurrencyUpdateQuery), "UPDATE t_rpg_tConomy SET currency = %i, bankCurrency = %i, playername = '%s' WHERE playerid = '%s';", g_iMoney[client], g_iBankedMoney[client], clean_playername, playerid);
 	SQL_TQuery(g_DB, SQLErrorCheckCallback, CurrencyUpdateQuery);
 }
 
