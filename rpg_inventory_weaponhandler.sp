@@ -227,6 +227,14 @@ public void takeItemSuit(int client, char[] item) {
 }
 
 public void takeItem(int client, char[] item, int islot) {
+	char cItem[128];
+	inventory_getItemNameBySlotAndClient(client, islot, cItem, "");
+	if (!StrEqual(cItem, item)) {
+		LogError("%N had an error with equiping >%s< | >%s<", client, item, cItem);
+		PrintToChat(client, "[-T-] There was an error equiping your Weapon");
+		return;
+	}
+	
 	char item2[128];
 	strcopy(item2, sizeof(item2), item);
 	
