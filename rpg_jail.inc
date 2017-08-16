@@ -31,3 +31,17 @@ native int jail_freeFromJail(int client);
 	*/
 native bool jail_isInJail(int client);
 
+	/*
+		Forward on client jailed
+		@Param1 -> int client | client that got jailed
+		@Param2 -> int initiator | client that jailed Param1
+	*/
+forward void jail_OnClientJailed(int client, int initiator);
+	
+	
+	/*
+		Forward on client jailed
+		@Param1 -> int client | client that got jailed
+		@Param2 -> bool escaped | true -> fled from Prison, false -> was released rightfully
+	*/
+forward void jail_OnClientUnJailed(int client, bool escaped);
