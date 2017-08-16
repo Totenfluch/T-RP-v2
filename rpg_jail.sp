@@ -59,6 +59,9 @@ float g_fJailExitZ;
 Handle g_hMaxDistanceToJail;
 float g_fMaxDistanceToJail;
 
+Handle g_hOnClientJailed;
+Handle g_hOnClientUnJailed;
+
 enum playerProperties {
 	ppCell_number, 
 	ppTimes_in_jail, 
@@ -153,6 +156,21 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 		@return true or false
 	*/
 	CreateNative("jail_isInJail", Native_isInJail);
+	
+	/*
+		Forward on client jailed
+		@Param1 -> int client | client that got jailed
+		@Param2 -> int initiator | client that jailed Param1
+	*/
+	g_hOnClientJailed = CreateGlobalForward("jail_OnClientJailed", ET_Ignore, Param_Cell, Param_Cell);
+	
+	
+	/*
+		Forward on client jailed
+		@Param1 -> int client | client that got jailed
+		@Param2 -> bool escaped | true -> fled from Prison, false -> was released rightfully
+	*/
+	g_hOnClientUnJailed = CreateGlobalForward("jail_OnClientUnJailed", ET_Ignore, Param_Cell, Param_Cell);
 }
 
 public int Native_putInJail(Handle plugin, int numParams) {
@@ -220,6 +238,11 @@ public void putInJail(int initiator, int target) {
 	SQL_TQuery(g_DB, SQLErrorCheckCallback, putInJailQuery);
 	
 	putInCell(target, cell);
+	
+	Call_StartForward(g_hOnClientJailed);
+	Call_PushCell(target);
+	Call_PushCell(initiator);
+	Call_Finish();
 }
 
 public void putInCell(int client, int cellnumber) {
@@ -240,6 +263,11 @@ public void free(int client) {
 	pos[1] = g_fJailExitY;
 	pos[2] = g_fJailExitZ;
 	TeleportEntity(client, pos, NULL_VECTOR, NULL_VECTOR);
+	
+	Call_StartForward(g_hOnClientUnJailed);
+	Call_PushCell(client);
+	Call_PushCell(0);
+	Call_Finish();
 }
 
 public void escape(int client) {
@@ -470,6 +498,10 @@ public int Zone_OnClientEntry(int client, char[] zone) {
 	if (StrEqual(zone, "JailExit")) {
 		if (g_bIsInJail[client] && g_ePlayerData[client][ppCell_number] != -1) {
 			tCrime_addCrime(client, tCrime_getCrime(client));
+			Call_StartForward(g_hOnClientUnJailed);
+			Call_PushCell(client);
+			Call_PushCell(1);
+			Call_Finish();
 			escape(client);
 		}
 	}

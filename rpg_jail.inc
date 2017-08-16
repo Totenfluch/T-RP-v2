@@ -29,4 +29,5 @@ native int jail_freeFromJail(int client);
 		
 		@return true or false
 	*/
-native bool jail_isInJail(int client); 
+native bool jail_isInJail(int client);
+
