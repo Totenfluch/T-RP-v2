@@ -1,6 +1,8 @@
 # T-RP
 Roleplay system for CSGO in sourcepawn
 
+Whitepaper: https://totenfluch.de/rp/Roleplay_Whitepaper_v1.pdf
+
 Usage:
   - Cars:
       - sm_car_stow
